@@ -1,5 +1,3 @@
-val Int.MEG: Int get() = this * 1024 * 1024
-
 fun main() {
     val sampleInput = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>"
 
@@ -28,26 +26,46 @@ fun main() {
         return false
     }
 
+    data class Stats(val rockCount: Long, val top: Long, val rockIndex: Int, val jetIndex: Int)
+
     // Part 1
-    fun String.part1(rockCount: Long = 2022, debug: Int = 0): Long {
-        val bufferSize = 1.MEG
+    fun String.part1(rockCount: Long = 2022): Long {
+        val bufferSize = 127
         val cave = IntArray(bufferSize) { 0 }
         var jetIndex = 0
-        var top = 0
+        var top = 0L
+        val pattern = intArrayOf(124, 20, 20)
+        val patternSeen = mutableListOf<Stats>()
+        var currentRockCount = 0L
 
-        fun cyc(i: Int): Int = (if (i < 0) bufferSize - i else i) % bufferSize
-        for (c in 0 until rockCount) {
-            if (c % rockTypes.size == 0L && jetIndex % this.length == 0) {
-                println("The cycle begins again? $c $top")
+        while (currentRockCount < rockCount) {
+            val rockIndex = (currentRockCount % rockTypes.size).toInt()
+            val nextRock = rockTypes[rockIndex]
+
+            // Reset blank lines
+            while (top > 0 && cave[top.mod(bufferSize)] == 0) top--
+
+            // Look for a known pattern (at least in this data set)
+            if (cave[currentRockCount.mod(bufferSize)] == 120 && cave[(currentRockCount + 1).mod(bufferSize)] == 80 &&
+                cave[(currentRockCount + 2).mod(bufferSize)] == 80 && cave[(currentRockCount + 3).mod(bufferSize)] == 64
+            ) {
+                if (patternSeen.isEmpty() || patternSeen.firstOrNull()?.let { it.rockIndex == rockIndex && it.jetIndex == jetIndex.mod(length) } == true) {
+                    patternSeen.add(Stats(currentRockCount, top, rockIndex, jetIndex.mod(length)))
+                    if (patternSeen.size > 2) {
+                        val deltaRockCount = (patternSeen[1].rockCount - patternSeen[0].rockCount)
+                        val deltaHeight = (patternSeen[1].top - patternSeen[0].top)
+                        val iterationsToSkip = (rockCount - currentRockCount) / deltaRockCount
+                        val skipHeight = iterationsToSkip * deltaHeight
+                        val skipRocks = iterationsToSkip * deltaRockCount
+                        top += skipHeight
+                        currentRockCount += skipRocks
+                    }
+                }
             }
-            val nextRock = rockTypes[(c % rockTypes.size).toInt()]
 
-            if (c % 1000000L == 0L) println("${c * 100.0 / rockCount}% = $top")
-
-            // Keep blank lines at top of cave
-            while (top > 0 && cave[cyc(top)] == 0) top--
+            // Add space at top for new rock
             val newTop = top + nextRock.size + 3
-            for (x in top + 1..newTop) cave[cyc(x)] = 0
+            for (x in top + 1..newTop) cave[x.mod(bufferSize)] = 0
             top = newTop
 
             // Position rock
@@ -59,35 +77,40 @@ fun main() {
                 val jet = this[jetIndex % this.length]
                 jetIndex++
                 rockDropping = when (jet) {
-                    '>' -> if (rockDropping.canShiftRight { x -> cave[cyc(top - (y + x))] }) rockDropping.shiftRight(1) else rockDropping
-                    '<' -> if (rockDropping.canShiftLeft { x -> cave[cyc(top - (y + x))] }) rockDropping.shiftLeft(1) else rockDropping
+                    '>' -> if (rockDropping.canShiftRight { x -> cave[(top - (y + x)).mod(bufferSize)] }) rockDropping.shiftRight(1) else rockDropping
+                    '<' -> if (rockDropping.canShiftLeft { x -> cave[(top - (y + x)).mod(bufferSize)] }) rockDropping.shiftLeft(1) else rockDropping
                     else -> rockDropping
                 }
 
-                if (top - (y + 1 + rockDropping.size) < 0 || rockDropping.anyIndexed { x, mask -> mask and cave[cyc(top - (y + 1 + x))] != 0 }) {
+                if (top - (y + 1 + rockDropping.size) < 0 || rockDropping.anyIndexed { x, mask -> mask and cave[(top - (y + 1 + x)).mod(bufferSize)] != 0 }) {
                     // Floor or Collision would occur
-                    rockDropping.forEachIndexed { x, mask -> cave[cyc(top - (x + y))] = cave[cyc(top - (x + y))] or mask }
+                    rockDropping.forEachIndexed { x, mask -> cave[(top - (x + y)).mod(bufferSize)] = cave[(top - (x + y)).mod(bufferSize)] or mask }
                     break
                 }
             }
+            currentRockCount++
         }
-        return top - 3L
+        while (cave[top.mod(bufferSize)] == 0) top--
+        return top
     }
 
     with(sampleInput.parseData()) {
-        Assert.equals(part1(debug = 0), 3068)
+        Assert.equals(part1(), 3068)
         println("Sample passed part 1")
     }
 
     with(puzzleInput.parseData()) {
-        println("Part 1 result: ${part1()}")
+        val result = part1()
+        Assert.equals(result, 3059)
+        println("Part 1 result: $result")
     }
 
     // Part 2
-    fun String.part2(): Long = part1(1000000000000L)
+    fun String.part2(): Long = part1(rockCount = 1000000000000)
 
     with(sampleInput.parseData()) {
         Assert.equals(part2(), 1514285714288L)
+        println("Sample passed part 2")
     }
 
     with(puzzleInput.parseData()) {

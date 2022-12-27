@@ -1,3 +1,11 @@
+fun <T> List<T>.cycle(): Sequence<T> = sequence {
+    var index = 0
+    while (true) {
+        yield(get(index))
+        index = (index + 1) % size
+    }
+}
+
 fun main() {
     val sampleInput =
         """
@@ -28,14 +36,6 @@ fun main() {
             }
         }
         return shuffleList.map { it.value }
-    }
-
-    fun <T> List<T>.cycle(): Sequence<T> = sequence {
-        var index = 0
-        while (true) {
-            yield(get(index))
-            index = (index + 1) % size
-        }
     }
 
     fun List<Long>.sumCoords() = cycle().dropWhile { it != 0L }.take(3001).filterIndexed { index, _ -> index % 1000 == 0 }.sum()

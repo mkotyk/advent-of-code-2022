@@ -1,7 +1,10 @@
 typealias RockWalls = List<List<Point>>
 typealias Bitmap = Array<CharArray>
 
-data class Bounds(val left: Int, val top: Int, val right: Int, val bottom: Int)
+data class Bounds(val left: Int, val top: Int, val right: Int, val bottom: Int) {
+    val width: Int by lazy { right - left }
+    val height: Int by lazy { bottom - top }
+}
 
 fun Point.lineTo(other: Point, plot: (Point) -> Unit) {
     if (this.x == other.x) {
